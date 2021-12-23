@@ -9,17 +9,21 @@ public class HungarianAlgorithm {
 
     public HungarianAlgorithm() {
     }
+
     public Double Solve(Mat DistMatrix, ArrayList<Integer> Assignment){
+        System.out.println("solve");
         int nRows = (int) DistMatrix.size().height;
         int nCols = (int) DistMatrix.size().width;
-
+//        System.out.println("hung rowcol "+ nRows+" "+nCols);
         double[] distMatrixIn = new double[nRows*nCols];
         int[] assignment = new int[nRows];
         double cost = 0.0;
         for ( int i = 0; i < nRows; i++)
             for ( int j = 0; j < nCols; j++)
                 distMatrixIn[i + nRows * j] = DistMatrix.get(i,j)[0];
+
         assignmentoptimal(assignment, cost, distMatrixIn, nRows, nCols);
+
         Assignment.clear();
         for (int r = 0; r < nRows; r++){
 //            System.out.println(assignment[r]);
@@ -31,6 +35,7 @@ public class HungarianAlgorithm {
 
     public void assignmentoptimal(int [] assignment, double cost, double[] distMatrixIn, int nOfRows, int nOfColumns){
         /* initialization */
+        System.out.println("assignment optimal");
         cost = 0;
 
         for (int row = 0 ; row < nOfRows; row++)
@@ -132,10 +137,12 @@ public class HungarianAlgorithm {
         /* move to step 2b */
         step2b(assignment, distMatrix, starMatrix, newStarMatrix, primeMatrix, coveredColumns, coveredRows, nOfRows, nOfColumns, minDim);
         /* compute cost and remove invalid assignments */
+
         computeassignmentcost(assignment, cost, distMatrixIn, nOfRows);
         return;
     }
     void buildassignmentvector(int[] assignment, boolean[] starMatrix, int nOfRows, int nOfColumns){
+        System.out.println("buildassignmentvector");
         int row,col;
         for (row = 0; row < nOfRows;row++)
             for (col = 0; col <nOfColumns; col++)
@@ -146,6 +153,7 @@ public class HungarianAlgorithm {
     }
 
     void computeassignmentcost(int[] assignment, double cost, double[] distMatrix, int nOfRows){
+        System.out.println("computeassignmentcost");
         int row,col;
         for (row = 0 ;row< nOfRows; row++){
             col = assignment[row];
@@ -155,6 +163,7 @@ public class HungarianAlgorithm {
     }
 
     void step2a(int[] assignment, double[] distMatrix, boolean[] starMatrix, boolean[] newStarMatrix, boolean[] primeMatrix, boolean[] coveredColumns, boolean[] coveredRows, int nOfRows, int nOfColumns, int minDim ){
+        System.out.println("step2a");
         int columnEnd;
         int col;
         /* cover every column containing a starred zero */
@@ -165,17 +174,19 @@ public class HungarianAlgorithm {
             while (currentIndex < columnEnd){
                 if (starMatrix[currentIndex])
                 {
-                    currentIndex++;
                     coveredColumns[col] = true;
                     break;
                 }
+                currentIndex++;
             }
         }
+        System.out.println("step2a1");
         /* move to step 3 */
         step2b(assignment, distMatrix, starMatrix, newStarMatrix, primeMatrix, coveredColumns, coveredRows, nOfRows, nOfColumns, minDim);
     }
 
     void step2b(int[] assignment, double[] distMatrix, boolean[] starMatrix, boolean[] newStarMatrix, boolean[] primeMatrix, boolean[] coveredColumns, boolean[] coveredRows, int nOfRows, int nOfColumns, int minDim ){
+        System.out.println("step2b");
         int col, nOfCoveredColumns;
 
         /* count covered columns */
@@ -192,11 +203,13 @@ public class HungarianAlgorithm {
         else
         {
             /* move to step 3 */
+
             step3(assignment, distMatrix, starMatrix, newStarMatrix, primeMatrix, coveredColumns, coveredRows, nOfRows, nOfColumns, minDim);
         }
     }
 
     void step3(int[] assignment, double[] distMatrix, boolean[] starMatrix, boolean[] newStarMatrix, boolean[] primeMatrix, boolean[] coveredColumns, boolean[] coveredRows, int nOfRows, int nOfColumns, int minDim ){
+        System.out.println("step3");
         boolean zerosFound;
         int row,col,starCol;
         zerosFound = true;
@@ -231,10 +244,12 @@ public class HungarianAlgorithm {
                         }
         }
         /* move to step 5 */
+
         step5(assignment, distMatrix, starMatrix, newStarMatrix, primeMatrix, coveredColumns, coveredRows, nOfRows, nOfColumns, minDim);
     }
 
     void step4(int[] assignment, double[] distMatrix, boolean[] starMatrix, boolean[] newStarMatrix, boolean[] primeMatrix, boolean[] coveredColumns, boolean[] coveredRows, int nOfRows, int nOfColumns, int minDim, int row, int col ){
+        System.out.println("step4");
         int n, starRow, starCol, primeRow, primeCol;
         int nOfElements = nOfRows*nOfColumns;
 
@@ -286,6 +301,7 @@ public class HungarianAlgorithm {
         step2a(assignment, distMatrix, starMatrix, newStarMatrix, primeMatrix, coveredColumns, coveredRows, nOfRows, nOfColumns, minDim);
     }
     void step5(int[] assignment, double[] distMatrix, boolean[] starMatrix, boolean[] newStarMatrix, boolean[] primeMatrix, boolean[] coveredColumns, boolean[] coveredRows, int nOfRows, int nOfColumns, int minDim ){
+        System.out.println("step5");
         double h, value;
         int row, col;
         double DBL_MAX = (double) 1.79769313486231570814527423731704357e+308;
@@ -312,7 +328,6 @@ public class HungarianAlgorithm {
             if (!coveredColumns[col])
                 for (row = 0; row<nOfRows; row++)
                     distMatrix[row + nOfRows*col] -= h;
-
         /* move to step 3 */
         step3(assignment, distMatrix, starMatrix, newStarMatrix, primeMatrix, coveredColumns, coveredRows, nOfRows, nOfColumns, minDim);
     }

@@ -1,5 +1,6 @@
 package quannm;
 
+//import com.google.common.collect.Sets;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.LineIterator;
 import org.opencv.core.Core;
@@ -12,28 +13,30 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
-import static org.opencv.core.Core.getTickCount;
-import static org.opencv.core.Core.getTickFrequency;
+import static org.opencv.core.Core.*;
 import static org.opencv.core.CvType.CV_32F;
 import static org.opencv.core.CvType.CV_64F;
-import com.google.common.collect.Sets;
 import java.util.Set;
+import java.util.HashSet;
 
 public class Main {
 
     static int total_frames = 0;
     static double total_time = 0.0;
 
+
     public static void main(String[] args) throws IOException {
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
         ArrayList<String> Sequences = new ArrayList<>(Arrays.asList("PETS09-S2L1", "TUD-Campus", "TUD-Stadtmitte", "ETH-Bahnhof", "ETH-Sunnyday", "ETH-Pedcross2", "KITTI-13", "KITTI-17", "ADL-Rundle-6", "ADL-Rundle-8", "Venice-2"));
         for (String sequence : Sequences) {
             TestSORT(sequence, false);
+//            break;
         }
         // write your code here
     }
 
     public static void TestSORT(String seqName, boolean display) throws IOException {
+        int currTrackerIndex;
         System.out.println("Processing " + seqName + " ....");
         String imgPath = "/media/HDD/sort/mot_benchmark/train/" + seqName + "/img1/";
         if (display) {
@@ -95,7 +98,7 @@ public class Main {
         int min_hits = 3;
         double iouThreshold = 0.3;
         ArrayList<KalmanTracker> trackers = new ArrayList<>();
-
+        KalmanTracker.setKf_count(0);
         // variables used in the for-loop
         ArrayList<Rect> predictedBoxes = new ArrayList<>();
         Mat iouMatrix;
@@ -132,6 +135,7 @@ public class Main {
                 for (int i = 0; i < detFrameData.get(fi).size(); i++) {
 
                     KalmanTracker trk = new KalmanTracker(detFrameData.get(fi).get(i).getBox());
+//                    System.out.println("detFrameData "+detFrameData.get(fi).get(i).getBox());
                     trackers.add(trk);
                 }
                 // output the first frame detections
@@ -144,19 +148,44 @@ public class Main {
 
             // 3.1. get predicted locations from existing trackers.
             predictedBoxes.clear();
-            for (KalmanTracker tracker : trackers){
-                Rect pBox = tracker.predict();
-                if(pBox.x >= 0 && pBox.y >=0){
+//            for (KalmanTracker tracker : trackers){
+//                Rect pBox = tracker.predict();
+//                if(pBox.x >= 0 && pBox.y >=0){
+//                    predictedBoxes.add(pBox);
+//                }
+//                else{
+//                    trackers.remove(tracker);
+//                }
+//            }
+            System.out.println("trackers size "+trackers.size());
+            for (currTrackerIndex = 0; currTrackerIndex < trackers.size();){
+                Rect pBox = trackers.get(currTrackerIndex).predict();
+//                try
+//                {
+//                    Thread.sleep(1000); // Sleep for one second
+//                }
+//                catch (InterruptedException e)
+//                {
+//                    Thread.currentThread().interrupt();
+//                }
+                System.out.println("current index "+currTrackerIndex);
+                System.out.println("predicted box "+pBox);
+                if (pBox.x >=0 && pBox.y >= 0){
                     predictedBoxes.add(pBox);
+                    currTrackerIndex++;
+
                 }
                 else{
-                    trackers.remove(tracker);
+                    trackers.remove(currTrackerIndex);
                 }
             }
+
             // 3.2. associate detections to tracked object (both represented as bounding boxes)
             // dets : detFrameData[fi]
+//            System.out.println("3.2");
             trkNum = predictedBoxes.size();
             detNum = detFrameData.get(fi).size();
+
             iouMatrix = new Mat(trkNum,detNum,CV_64F);
 
             for (int i = 0; i < trkNum; i++) // compute iou matrix as a distance matrix
@@ -167,14 +196,24 @@ public class Main {
                     iouMatrix.put(i,j,1 - GetIOU(predictedBoxes.get(i), detFrameData.get(fi).get(j).getBox()));
                 }
             }
+
             // solve the assignment problem using hungarian algorithm.
             // the resulting assignment is [track(prediction) : detection], with len=preNum
             HungarianAlgorithm HungAlgo = new HungarianAlgorithm();
             assignment.clear();
-            HungAlgo.Solve(iouMatrix,assignment);
 
+            HungAlgo.Solve(iouMatrix,assignment);
+//            for (Integer as : assignment){
+//                System.out.println(as);;
+//            }
             // find matches, unmatched_detections and unmatched_predictions
+
             unmatchedTrajectories.clear();
+
+//            System.out.println("unmatched det "+ unmatchedDetections);
+
+            System.out.println("unmatched det "+ unmatchedDetections.size());
+//            System.out.println("New hashset");
             unmatchedDetections.clear();
             allItems.clear();
             matchedItems.clear();
@@ -186,8 +225,10 @@ public class Main {
                 for ( int i = 0; i < trkNum; ++i)
                 matchedItems.add(assignment.get(i));
 
-                unmatchedDetections = Sets.difference(allItems,
-                         matchedItems);
+//                unmatchedDetections = Sets.difference(allItems,
+//                         matchedItems);
+                unmatchedDetections = new HashSet<>(allItems);
+                unmatchedDetections.removeAll(matchedItems);
 
             }
             else if (detNum < trkNum) // there are unmatched trajectory/predictions
@@ -217,6 +258,7 @@ public class Main {
 
             // update matched trackers with assigned detections.
             // each prediction is corresponding to a tracker
+//            System.out.println("3.3");
             int detIdx, trkIdx;
             for ( int i = 0; i < matchedPairs.size(); i++)
             {
@@ -226,15 +268,17 @@ public class Main {
             }
 
             // create and initialise new trackers for unmatched detections
+
             for (Integer umd : unmatchedDetections)
             {
+//                System.out.println(detFrameData.get(fi).get(umd).getBox());
                 KalmanTracker tracker = new KalmanTracker(detFrameData.get(fi).get(umd).getBox());
                 trackers.add(tracker);
             }
             // get trackers' output
             frameTrackingResult.clear();
 
-            int currTrackerIndex;
+
             for (currTrackerIndex = 0; currTrackerIndex < trackers.size();){
                 if((trackers.get(currTrackerIndex).m_time_since_update < 1) && (trackers.get(currTrackerIndex).m_hit_streak >= min_hits || frame_count <= min_hits)){
                     TrackingBox res = new TrackingBox();
@@ -271,6 +315,7 @@ public class Main {
         }
         fstream.close();
     }
+
     static double GetIOU(Rect bb_test, Rect bb_gt)
     {
         Double DBL_EPSILON = 2.22044604925031308084726333618164062e-16;
