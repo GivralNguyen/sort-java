@@ -6,7 +6,7 @@ The original SORT [python implementation](https://github.com/abewley/sort) and [
 
 
 ## Dependencies
-- Ubuntu 16.04
+- Ubuntu 18.04
 - OpenCV 4.5.4
 - commons-io-2.11.0
 
@@ -94,4 +94,4 @@ $ python -m motmetrics.apps.eval_motchallenge mot_benchmark/train output/
 ## References
 1. https://github.com/abewley/sort
 2. https://github.com/mcximing/sort-cpp
-3. https://github.com/saebyn/munkres-cpp
+
