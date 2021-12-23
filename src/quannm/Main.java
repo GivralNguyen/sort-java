@@ -3,11 +3,12 @@ package quannm;
 //import com.google.common.collect.Sets;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.LineIterator;
-import org.opencv.core.Core;
-import org.opencv.core.Mat;
+import org.opencv.core.*;
 import org.opencv.core.Point;
-import org.opencv.core.Rect;
+import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.Imgproc;
 
+import java.awt.*;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,6 +17,9 @@ import java.util.*;
 import static org.opencv.core.Core.*;
 import static org.opencv.core.CvType.CV_32F;
 import static org.opencv.core.CvType.CV_64F;
+import static org.opencv.highgui.HighGui.*;
+
+import java.util.List;
 import java.util.Set;
 import java.util.HashSet;
 
@@ -28,26 +32,37 @@ public class Main {
     public static void main(String[] args) throws IOException {
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
         ArrayList<String> Sequences = new ArrayList<>(Arrays.asList("PETS09-S2L1", "TUD-Campus", "TUD-Stadtmitte", "ETH-Bahnhof", "ETH-Sunnyday", "ETH-Pedcross2", "KITTI-13", "KITTI-17", "ADL-Rundle-6", "ADL-Rundle-8", "Venice-2"));
+        // Loop through all datasets
         for (String sequence : Sequences) {
-            TestSORT(sequence, false);
-//            break;
+            TestSORT(sequence, true); // display variable
         }
-        // write your code here
     }
 
     public static void TestSORT(String seqName, boolean display) throws IOException {
         int currTrackerIndex;
+        List randColor = new ArrayList();
+        float r,g,b;
+        Color randomColor;
+        Random rand = new Random();
+        for (int i = 0; i < 20; i++)
+        {
+            r = rand.nextFloat();
+            g = rand.nextFloat();
+            b = rand.nextFloat();
+            randomColor = new Color (r, g, b);
+            randColor.add(randomColor);
+        }
+
         System.out.println("Processing " + seqName + " ....");
-        String imgPath = "/media/HDD/sort/mot_benchmark/train/" + seqName + "/img1/";
+        String imgPath = "src/mot_benchmark/train/" + seqName + "/img1/";
         if (display) {
             if (!Files.exists(Path.of(imgPath))) {
                 System.out.println("Image path not found");
-
                 display = false;
             }
         }
         // 1 . Read detection file
-        String detFileName = "/home/quannm/Documents/code/sort-cpp/sort-c++/data/" + seqName + "/det.txt";
+        String detFileName = "src/data/" + seqName + "/det.txt";
         File detFile = new File(detFileName);
 
         String detLine;
@@ -59,7 +74,6 @@ public class Main {
             while (it.hasNext()) {
                 TrackingBox tb = new TrackingBox();
                 String line = it.nextLine();
-//                System.out.println(line);
                 String[] values = line.split(",");
 
                 tb.setFrame(Integer.parseInt(values[0]));
@@ -69,19 +83,17 @@ public class Main {
             }
         }
         // 2. group detData by frame
-        int maxFrame = 0;// find max frame number
+        int maxFrame = 0;
         for (TrackingBox tb : detData) {
             if (maxFrame < tb.getFrame())
                 maxFrame = tb.getFrame();
         }
-//        System.out.println(maxFrame); //OK!
 
         ArrayList<ArrayList<TrackingBox>> detFrameData = new ArrayList<>();
         ArrayList<TrackingBox> tempVec = new ArrayList<>();
         for (int fi = 0; fi < maxFrame; fi++) {
             for (TrackingBox tb : detData) {
                 if (tb.getFrame() == fi + 1) {
-//                    System.out.println(tb.getFrame());//OK!
                     tempVec.add(tb);
                 }
             }
@@ -89,9 +101,7 @@ public class Main {
             tempVec.clear();
 
         }
-//        System.out.println(detData.size()); //OK
-//        System.out.println(detFrameData.size());
-//        System.out.println(detFrameData);
+
         // 3. update across frames
         int frame_count = 0;
         int max_age = 1;
@@ -115,29 +125,23 @@ public class Main {
         double cycle_time = 0.0;
         long start_time = 0;
 
-        FileWriter fstream = new FileWriter("/home/quannm/Documents/code/sort-cpp/sort-c++/output/" + seqName + ".txt", true);
+        FileWriter fstream = new FileWriter("src/output/" + seqName + ".txt", true);
 
         // main loop
         for (int fi = 0; fi < maxFrame; fi++) {
             total_frames++;
             frame_count++;
-//            System.out.println(total_frames); //OK
-//            System.out.println(frame_count);
 
-            // I used to count running time using clock(), but found it seems to conflict with cv::cvWaitkey(),
-            // when they both exists, clock() can not get right result. Now I use cv::getTickCount() instead.
 //            start_time = getTickCount();
 
             if (trackers.size() == 0) // the first frame met
             {
                 // initialize kalman trackers using first detections.
-//                System.out.println(detFrameData.get(fi).size());
                 for (int i = 0; i < detFrameData.get(fi).size(); i++) {
-
                     KalmanTracker trk = new KalmanTracker(detFrameData.get(fi).get(i).getBox());
-//                    System.out.println("detFrameData "+detFrameData.get(fi).get(i).getBox());
                     trackers.add(trk);
                 }
+
                 // output the first frame detections
                 for (int id = 0; id < detFrameData.get(fi).size(); id++) {
                     TrackingBox tb = detFrameData.get(fi).get(id);
@@ -148,16 +152,8 @@ public class Main {
 
             // 3.1. get predicted locations from existing trackers.
             predictedBoxes.clear();
-//            for (KalmanTracker tracker : trackers){
-//                Rect pBox = tracker.predict();
-//                if(pBox.x >= 0 && pBox.y >=0){
-//                    predictedBoxes.add(pBox);
-//                }
-//                else{
-//                    trackers.remove(tracker);
-//                }
-//            }
-            System.out.println("trackers size "+trackers.size());
+
+//            System.out.println("trackers size "+trackers.size());
             for (currTrackerIndex = 0; currTrackerIndex < trackers.size();){
                 Rect pBox = trackers.get(currTrackerIndex).predict();
 //                try
@@ -168,8 +164,8 @@ public class Main {
 //                {
 //                    Thread.currentThread().interrupt();
 //                }
-                System.out.println("current index "+currTrackerIndex);
-                System.out.println("predicted box "+pBox);
+//                System.out.println("current index "+currTrackerIndex);
+//                System.out.println("predicted box "+pBox);
                 if (pBox.x >=0 && pBox.y >= 0){
                     predictedBoxes.add(pBox);
                     currTrackerIndex++;
@@ -182,7 +178,7 @@ public class Main {
 
             // 3.2. associate detections to tracked object (both represented as bounding boxes)
             // dets : detFrameData[fi]
-//            System.out.println("3.2");
+
             trkNum = predictedBoxes.size();
             detNum = detFrameData.get(fi).size();
 
@@ -203,17 +199,14 @@ public class Main {
             assignment.clear();
 
             HungAlgo.Solve(iouMatrix,assignment);
-//            for (Integer as : assignment){
-//                System.out.println(as);;
-//            }
+
             // find matches, unmatched_detections and unmatched_predictions
 
             unmatchedTrajectories.clear();
 
 //            System.out.println("unmatched det "+ unmatchedDetections);
 
-            System.out.println("unmatched det "+ unmatchedDetections.size());
-//            System.out.println("New hashset");
+//            System.out.println("unmatched det "+ unmatchedDetections.size());
             unmatchedDetections.clear();
             allItems.clear();
             matchedItems.clear();
@@ -224,9 +217,6 @@ public class Main {
 
                 for ( int i = 0; i < trkNum; ++i)
                 matchedItems.add(assignment.get(i));
-
-//                unmatchedDetections = Sets.difference(allItems,
-//                         matchedItems);
                 unmatchedDetections = new HashSet<>(allItems);
                 unmatchedDetections.removeAll(matchedItems);
 
@@ -297,23 +287,27 @@ public class Main {
 
             for (TrackingBox tb : frameTrackingResult)
             {
-//                System.out.println(tb.getBox());
                 fstream.write(tb.getFrame() + "," + (tb.getId()) + "," + tb.getBox().x + "," + tb.getBox().y + "," + tb.getBox().width + "," + tb.getBox().height + ",1,-1,-1,-1" + "\n");
-//            if (display) // read image, draw results and show them
-//            {
-//                ostringstream oss;
-//                oss << imgPath << setw(6) << setfill('0') << fi + 1;
-//                Mat img = imread(oss.str() + ".jpg");
-//                if (img.empty())
-//                    continue;
-//
-//                for (auto tb : frameTrackingResult)
-//                    cv::rectangle(img, tb.box, randColor[tb.id % CNUM], 2, 8, 0);
-//                imshow(seqName, img);
-//                cv::waitKey(40);
+            }
+            if(display){
+                String oss = imgPath + String.format("%06d", fi+1)+".jpg";
+                System.out.println(oss);
+                Mat img = Imgcodecs.imread(oss);
+                if (img.empty())
+                    continue;
+                for (TrackingBox tb : frameTrackingResult){
+                    Color color = (Color) randColor.get(tb.getId() % 20);
+//                    System.out.println(color);
+                    Scalar opencv_color = new Scalar(color.getBlue(),color.getGreen(),color.getRed());
+                    Imgproc.rectangle(img,tb.getBox(), opencv_color, 2, 8, 0);
+                }
+                imshow(seqName,img);
+                waitKey(40);
             }
         }
         fstream.close();
+        if (display)
+            destroyAllWindows();
     }
 
     static double GetIOU(Rect bb_test, Rect bb_gt)
