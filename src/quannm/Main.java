@@ -34,7 +34,7 @@ public class Main {
         ArrayList<String> Sequences = new ArrayList<>(Arrays.asList("PETS09-S2L1", "TUD-Campus", "TUD-Stadtmitte", "ETH-Bahnhof", "ETH-Sunnyday", "ETH-Pedcross2", "KITTI-13", "KITTI-17", "ADL-Rundle-6", "ADL-Rundle-8", "Venice-2"));
         // Loop through all datasets
         for (String sequence : Sequences) {
-            TestSORT(sequence, true); // display variable
+            TestSORT(sequence, false); // display variable
         }
     }
 
@@ -125,7 +125,7 @@ public class Main {
         double cycle_time = 0.0;
         long start_time = 0;
 
-        FileWriter fstream = new FileWriter("src/output/" + seqName + ".txt", true);
+        FileWriter fstream = new FileWriter("src/output/" + seqName + ".txt", false);
 
         // main loop
         for (int fi = 0; fi < maxFrame; fi++) {
